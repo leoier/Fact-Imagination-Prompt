@@ -1,5 +1,5 @@
 """
-    Trainer class for training BERT for sequence labeling
+    Trainer class for training BERT for text classification
 """
 
 import torch
@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 class Trainer:
     """
-    Bert trainer used for training BERT for token classification (sequence labeling)
+    Bert trainer used for training BERT for text classification
     """
 
     def __init__(
@@ -126,7 +126,7 @@ class Trainer:
         For each training epoch
         """
         train_loss = 0
-        n_tks = 1e-9
+        n_batches = 0
 
         self._model.to(self._device)
         self._model.train()
@@ -136,47 +136,19 @@ class Trainer:
             batch.to(self._device)
 
             outputs = self._model(input_ids=batch.input_ids, attention_mask=batch.attention_mask, labels=batch.labels)
-            loss = self.get_loss(outputs.logits, batch.labels)
-            assert torch.abs(loss - outputs.loss) < 1e-6, ValueError("Loss mismatch!")
+            loss = outputs.loss
 
             # Backpropagation and update the model parameters, and track the training loss.
-            # `train_loss` is the summarized loss for all tokens involved in backpropagation.
-            batch_n_tks = (batch.labels != MASKED_LB_ID).sum()
-            train_loss += loss * batch_n_tks
-            n_tks += batch_n_tks
+            train_loss += loss.item()
+            n_batches += 1
             self._optimizer.zero_grad()
             loss.backward()
             self._optimizer.step()
             self._scheduler.step()
 
+        return train_loss / n_batches
 
-        return train_loss / n_tks
-
-    def get_loss(self, logits, lbs):
-        """
-        Get loss for a batch of data.
-
-        Parameters
-        ----------
-        logits : torch.Tensor
-            Output logits from the model.
-        lbs : torch.Tensor
-            Ground truth label ids.
-
-        Returns
-        -------
-        loss : torch.Tensor
-            Loss for the batch of data.
-        """
-        # Compute the loss for the batch of data.
-        # cross entropy loss
-        exp_logits = torch.exp(logits)
-        probs = exp_logits / exp_logits.sum(dim=-1, keepdim=True)
-        not_masked = (lbs != MASKED_LB_ID)
-        n_tks = not_masked.sum()
-        loss = -torch.log(probs[not_masked])[range(n_tks), lbs[not_masked]]
-        return loss.mean()
-
+    
     def eval_and_save(self):
         """
         Evaluate the model and save it if its performance exceeds the previous highest
