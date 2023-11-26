@@ -2,6 +2,7 @@
     Trainer class for training BERT for text classification
 """
 
+import os
 import torch
 import numpy as np
 import logging
@@ -118,6 +119,19 @@ class Trainer:
         logger.info("")
         logger.info("Test results:")
         self.log_results(test_results, detailed=True)
+
+        # save the test results
+        os.makedirs(os.path.dirname(self._config.output_path), exist_ok=True)
+        with open(self._config.output_path, "w") as f:
+            header = None
+            for lb, value in test_results.items():
+                if lb == "accuracy": 
+                    continue
+                if not header:
+                    header = "," + ",".join(value.keys())
+                    f.write(f"{header}\n")
+                f.write(f"{lb},{','.join([f'{v:.4f}' for v in value.values()])}\n")
+        
 
         return None
 

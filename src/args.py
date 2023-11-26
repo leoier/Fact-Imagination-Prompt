@@ -22,6 +22,7 @@ class Arguments:
 
     # --- manage directories and IO ---
     data_dir: str = field(default="./data/twitter", metadata={"help": "Directory to datasets"})
+
     bert_model_name_or_path: str = field(
         default="distilbert-base-uncased",
         metadata={
@@ -29,10 +30,17 @@ class Arguments:
             "Used to construct BERT embeddings if not exist"
         },
     )
+
     experiment: str = field(default="no_aug", metadata={"help": "Experiment name"})
+
     log_path: str = field(
         default=osp.join("log", "record.log"),
         metadata={"help": "Path to log directory"},
+    )
+
+    output_path: str = field(
+        default=osp.join("output", "result.csv"),
+        metadata={"help": "Path to output directory"},
     )
 
     # --- training arguments ---
