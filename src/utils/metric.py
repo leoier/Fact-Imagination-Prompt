@@ -24,11 +24,12 @@ def get_cls_metrics(true_lbs, pred_lbs, detailed: bool = False):
         metric_dict = dict()
         report = metrics.classification_report(true_lbs, pred_lbs, output_dict=True, zero_division=0)
         for tp, results in report.items():
-            if tp in ["accuracy", "macro avg", "weighted avg"]:
-                continue
-            metric_dict[tp] = {
-                "precision": results["precision"],
-                "recall": results["recall"],
-                "f1": results["f1-score"],
-            }
+            if tp == "accuracy":
+                metric_dict[tp] = {"overall": results}
+            else:
+                metric_dict[tp] = {
+                    "precision": results["precision"],
+                    "recall": results["recall"],
+                    "f1": results["f1-score"],
+                }
         return metric_dict
