@@ -1,5 +1,5 @@
 """
-    Trainer class for training BERT for sequence labeling
+    Trainer class for training BERT for text classification
 """
 
 import torch
@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 class Trainer:
     """
-    Bert trainer used for training BERT for token classification (sequence labeling)
+    Bert trainer used for training BERT for text classification
     """
 
     def __init__(
