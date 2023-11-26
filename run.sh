@@ -7,7 +7,7 @@ data_dir="./data"
 
 lr=0.00005
 batch_size=16
-n_epochs=1
+n_epochs=20
 warmup_ratio=0.1
 
 seed=42
