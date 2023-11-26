@@ -3,10 +3,10 @@
 """
 
 import os
-import json
 import logging
 import torch
 import numpy as np
+import pandas as pd
 from typing import List, Optional
 from transformers import AutoTokenizer
 
@@ -18,7 +18,7 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 logger = logging.getLogger(__name__)
 
 MASKED_LB_ID = -100
-
+MAX_TOKENS = 510
 
 class Dataset(torch.utils.data.Dataset):
     def __init__(self, text: Optional[List[List[str]]] = None, lbs: Optional[List[List[str]]] = None):
@@ -68,10 +68,12 @@ class Dataset(torch.utils.data.Dataset):
             f"Argument `partition` should be one of 'train', 'valid' or 'test'!"
         )
         self._partition = partition
-
-        file_path = os.path.normpath(os.path.join(config.data_dir, f"{partition}.json"))
+        if partition == "test":
+            file_path = os.path.normpath(os.path.join(config.data_dir, f"{partition}.csv"))
+        else:
+            file_path = os.path.normpath(os.path.join(config.data_dir, config.experiment, f"{partition}.csv"))
         logger.info(f"Loading data file: {file_path}")
-        self._text, self._lbs = load_data_from_json(file_path)
+        self._text, self._lbs = load_data_from_csv(file_path)
 
         logger.info("Encoding sequences...")
         self.encode(config.bert_model_name_or_path, {lb: idx for idx, lb in enumerate(config.bio_label_types)})
@@ -87,7 +89,7 @@ class Dataset(torch.utils.data.Dataset):
 
     def encode(self, tokenizer_name: str, lb2idx: dict):
         """
-        Build BERT token masks as model input
+        Build BERT token as model input
 
         Parameters
         ----------
@@ -101,38 +103,20 @@ class Dataset(torch.utils.data.Dataset):
         self
         """
         tokenizer = AutoTokenizer.from_pretrained(tokenizer_name, add_prefix_space=True)
-        tokenized_text = tokenizer(self._text, add_special_tokens=True, is_split_into_words=True)
+        tokenized_text = tokenizer(self._text, 
+                                   add_special_tokens=True, 
+                                   padding="max_length",
+                                   max_length=MAX_TOKENS, 
+                                   truncation=True)
 
         self._token_ids = tokenized_text.input_ids
         self._attn_masks = tokenized_text.attention_mask
-
-        bert_lbs_list = list()
-
-        # Update label sequence to match the BERT tokenization
-        for i, token_ids in enumerate(self._token_ids):
-            bert_lbs = []
-            for j, token_id in enumerate(token_ids):
-                word_id = tokenized_text.word_ids(i)[j]
-                if token_id == tokenizer.cls_token_id or token_id == tokenizer.sep_token_id:
-                    bert_lbs.append(MASKED_LB_ID)
-                elif j > 0 and word_id == tokenized_text.word_ids(i)[j-1]:
-                    bert_lbs.append(MASKED_LB_ID)
-                else:
-                    label = self._lbs[i][word_id]
-                    bert_lbs.append(lb2idx[label] if label in lb2idx else lb2idx["O"])
-            bert_lbs_list.append(bert_lbs)
-
-        for tks, lbs in zip(self._token_ids, bert_lbs_list):
-            assert len(tks) == len(lbs), ValueError(
-                f"Length of token ids ({len(tks)}) and labels ({len(lbs)}) mismatch!"
-            )
-
-        self._bert_lbs = bert_lbs_list
+        self._bert_lbs = [lb2idx[lb] for lb in self._lbs]
 
         return self
 
 
-def load_data_from_json(file_dir: str):
+def load_data_from_csv(file_dir: str):
     """
     Load data stored in the current data format.
 
@@ -142,18 +126,17 @@ def load_data_from_json(file_dir: str):
         file directory
 
     """
-    with open(file_dir, "r", encoding="utf-8") as f:
-        data_list = json.load(f)
+    
+    df = pd.read_csv(file_dir, encoding="utf-8", header=0)
 
     tk_seqs = list()
     lbs_list = list()
 
-    for inst in data_list:
+    for _, inst in df.iterrows():
         # get tokens
         tk_seqs.append(inst["text"])
 
         # get true labels
-        lbs = span_to_label(span_list_to_dict(inst["label"]), inst["text"])
-        lbs_list.append(lbs)
+        lbs_list.append(inst["label"])
 
     return tk_seqs, lbs_list

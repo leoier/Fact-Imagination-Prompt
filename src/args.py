@@ -21,7 +21,7 @@ class Arguments:
     """
 
     # --- manage directories and IO ---
-    data_dir: str = field(default="./data", metadata={"help": "Directory to datasets"})
+    data_dir: str = field(default="./data/twitter", metadata={"help": "Directory to datasets"})
     bert_model_name_or_path: str = field(
         default="distilbert-base-uncased",
         metadata={
@@ -29,6 +29,7 @@ class Arguments:
             "Used to construct BERT embeddings if not exist"
         },
     )
+    experiment: str = field(default="no_aug", metadata={"help": "Experiment name"})
     log_path: str = field(
         default=osp.join("log", "record.log"),
         metadata={"help": "Path to log directory"},
@@ -61,11 +62,11 @@ class Arguments:
     no_mps: bool = field(default=False, metadata={"help": "Disable MPS even when it is available"})
     no_cuda: bool = field(default=False, metadata={"help": "Disable CUDA even when it is available"})
 
-    def __post_init__(self):
-        assert osp.isfile(osp.join(self.data_dir, "train.json")), f"Training file does not exist!"
+    # def __post_init__(self):
+    #     assert osp.isfile(osp.join(self.data_dir, self.experiment, "train.csv")), f"Training file does not exist!"
 
-        if isinstance(self.name, list):
-            self.name = " ".join(self.name)
+    #     if isinstance(self.name, list):
+    #         self.name = " ".join(self.name)
 
     @cached_property
     def device(self) -> str:

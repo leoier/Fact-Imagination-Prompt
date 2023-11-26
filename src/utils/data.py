@@ -203,7 +203,7 @@ def probs_to_lbs(probs: Union[torch.Tensor, np.ndarray], label_types: List[str])
 
 
 def entity_to_bio_labels(entities: List[str]):
-    bio_labels = ["O"] + ["%s-%s" % (bi, label) for label in entities for bi in "BI"]
+    bio_labels = [label for label in entities]
     return bio_labels
 
 

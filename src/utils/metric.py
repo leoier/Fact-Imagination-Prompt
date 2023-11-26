@@ -1,17 +1,13 @@
-from seqeval import metrics
-from seqeval.scheme import IOB2
+from sklearn import metrics
 
-
-def get_ner_metrics(true_lbs, pred_lbs, mode: str = "strict", scheme=IOB2, detailed: bool = False):
+def get_cls_metrics(true_lbs, pred_lbs, detailed: bool = False):
     """
-    Get NER metrics including precision, recall and f1
+    Get classification metrics including precision, recall and f1
 
     Parameters
     ----------
     true_lbs: true labels
     pred_lbs: predicted labels
-    mode:
-    scheme: NER label scheme (IOB-2 as default, [O, B-, I-] )
     detailed: Whether get detailed result report instead of micro-averaged one
 
     Returns
@@ -19,17 +15,17 @@ def get_ner_metrics(true_lbs, pred_lbs, mode: str = "strict", scheme=IOB2, detai
     Metrics if not detailed else Dict[str, Metrics]
     """
     if not detailed:
-        p = metrics.precision_score(true_lbs, pred_lbs, mode=mode, zero_division=0, scheme=scheme)
-        r = metrics.recall_score(true_lbs, pred_lbs, mode=mode, zero_division=0, scheme=scheme)
-        f = metrics.f1_score(true_lbs, pred_lbs, mode=mode, zero_division=0, scheme=scheme)
+        p = metrics.precision_score(true_lbs, pred_lbs, average="weighted", zero_division=0)
+        r = metrics.recall_score(true_lbs, pred_lbs, average="weighted", zero_division=0)
+        f = metrics.f1_score(true_lbs, pred_lbs, average="weighted", zero_division=0)
         return {"precision": p, "recall": r, "f1": f}
 
     else:
         metric_dict = dict()
-        report = metrics.classification_report(
-            true_lbs, pred_lbs, output_dict=True, mode=mode, zero_division=0, scheme=scheme
-        )
+        report = metrics.classification_report(true_lbs, pred_lbs, output_dict=True, zero_division=0)
         for tp, results in report.items():
+            if tp in ["accuracy", "macro avg", "weighted avg"]:
+                continue
             metric_dict[tp] = {
                 "precision": results["precision"],
                 "recall": results["recall"],

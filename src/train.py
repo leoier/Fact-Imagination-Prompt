@@ -7,11 +7,11 @@ import numpy as np
 import logging
 from tqdm.auto import tqdm
 from torch.utils.data import DataLoader
-from transformers import AutoTokenizer, AutoModelForTokenClassification, get_scheduler
+from transformers import AutoTokenizer, AutoModelForSequenceClassification, get_scheduler
 
 from .args import Config
-from .dataset import DataCollator, MASKED_LB_ID
-from .utils.metric import get_ner_metrics
+from .dataset import DataCollator
+from .utils.metric import get_cls_metrics
 from .utils.container import CheckpointContainer
 
 logger = logging.getLogger(__name__)
@@ -59,7 +59,7 @@ class Trainer:
         return self
 
     def initialize_model(self):
-        self._model = AutoModelForTokenClassification.from_pretrained(
+        self._model = AutoModelForSequenceClassification.from_pretrained(
             pretrained_model_name_or_path=self._config.bert_model_name_or_path, num_labels=self._config.n_lbs
         )
         return self
@@ -126,7 +126,7 @@ class Trainer:
         For each training epoch
         """
         train_loss = 0
-        n_tks = 1e-9
+        n_batch = 1e-9
 
         self._model.to(self._device)
         self._model.train()
@@ -136,46 +136,18 @@ class Trainer:
             batch.to(self._device)
 
             outputs = self._model(input_ids=batch.input_ids, attention_mask=batch.attention_mask, labels=batch.labels)
-            loss = self.get_loss(outputs.logits, batch.labels)
-            assert torch.abs(loss - outputs.loss) < 1e-6, ValueError("Loss mismatch!")
+            loss = outputs.loss
 
             # Backpropagation and update the model parameters, and track the training loss.
-            # `train_loss` is the summarized loss for all tokens involved in backpropagation.
-            batch_n_tks = (batch.labels != MASKED_LB_ID).sum()
-            train_loss += loss * batch_n_tks
-            n_tks += batch_n_tks
+            train_loss += loss
+            n_batch += 1
             self._optimizer.zero_grad()
             loss.backward()
             self._optimizer.step()
             self._scheduler.step()
 
+        return train_loss / n_batch
 
-        return train_loss / n_tks
-
-    def get_loss(self, logits, lbs):
-        """
-        Get loss for a batch of data.
-
-        Parameters
-        ----------
-        logits : torch.Tensor
-            Output logits from the model.
-        lbs : torch.Tensor
-            Ground truth label ids.
-
-        Returns
-        -------
-        loss : torch.Tensor
-            Loss for the batch of data.
-        """
-        # Compute the loss for the batch of data.
-        # cross entropy loss
-        exp_logits = torch.exp(logits)
-        probs = exp_logits / exp_logits.sum(dim=-1, keepdim=True)
-        not_masked = (lbs != MASKED_LB_ID)
-        n_tks = not_masked.sum()
-        loss = -torch.log(probs[not_masked])[range(n_tks), lbs[not_masked]]
-        return loss.mean()
 
     def eval_and_save(self):
         """
@@ -206,11 +178,8 @@ class Trainer:
                 batch.to(self._device)
                 outputs = self._model(input_ids=batch.input_ids, attention_mask=batch.attention_mask)
                 batch_pred_idx = outputs.logits.argmax(dim=-1)
-                mask = (batch.labels == MASKED_LB_ID)
-                pred_lbs += [[idx2lb[idx.item()] for j, idx in enumerate(pred_idx) if not mask[i][j]] 
-                             for i, pred_idx in enumerate(batch_pred_idx)]
-
-        metric = get_ner_metrics(dataset.lbs, pred_lbs, detailed=detailed)
+                pred_lbs += [idx2lb[idx] for idx in batch_pred_idx.tolist()]
+        metric = get_cls_metrics(dataset.lbs, pred_lbs, detailed=detailed)
         return metric
 
     def test(self, dataset=None):
