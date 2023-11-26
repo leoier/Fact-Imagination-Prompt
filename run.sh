@@ -4,15 +4,30 @@
 set -e
 
 data_dir="./data"
-read -p "Choose the dataset (1: twitter, 2: stress): " dataset
-read -p "Choose the experiment (1: base, 2: simple, 3: label, 4: fact, 5: fact_human): " experiment
 
-case $dataset in
+lr=0.00005
+batch_size=16
+n_epochs=1
+warmup_ratio=0.1
+
+seed=42
+
+
+read -p "Choose the dataset (0: all, 1: twitter, 2: covid-19, 3: stress): " dataset_choice
+read -p "Choose the experiment (0: all, 1: base, 2: simple, 3: label, 4: fact, 5: fact_human): " experiment_choice
+
+case $dataset_choice in
+  0) 
+    datasets=("twitter" "covid-19" "stress")
+    ;;
   1)
-    data_dir="${data_dir}/twitter"
+    datasets=("twitter")
     ;;
   2)
-    data_dir="${data_dir}/stress"
+    datasets=("covid-19")
+    ;;
+  3)
+    datasets=("stress")
     ;;
   *)
     echo "Invalid dataset"
@@ -20,21 +35,25 @@ case $dataset in
     ;;
 esac
 
-case $experiment in
+
+case $experiment_choice in
+  0) 
+    experiments=("base" "simple" "label" "fact" "fact_human")
+    ;;
   1)
-    experiment="base"
+    experiments=("base")
     ;;
   2) 
-    experiment="simple"
+    experiments=("simple")
     ;;
   3) 
-    experiment="label"
+    experiments=("label")
     ;;
   4) 
-    experiment="fact"
+    experiments=("fact")
     ;;
   5) 
-    experiment="fact_human"
+    experiments=("fact_human")
     ;;
   *)
     echo "Invalid experiment"
@@ -42,20 +61,18 @@ case $experiment in
     ;;
 esac
 
-
-lr=0.00005
-batch_size=16
-n_epochs=20
-warmup_ratio=0.1
-
-seed=42
-
-
-CUDA_VISIBLE_DEVICES=$1 python3 run.py \
-  --data_dir $data_dir \
-  --experiment $experiment \
-  --lr $lr \
-  --batch_size $batch_size \
-  --n_epochs $n_epochs \
-  --warmup_ratio $warmup_ratio \
-  --seed $seed
+for dataset in "${datasets[@]}"; do
+  for experiment in "${experiments[@]}"; do
+    echo "Running ${experiment} on ${dataset}..."
+    CUDA_VISIBLE_DEVICES=$1 python3 run.py \
+      --data_dir "${data_dir}/${dataset}" \
+      --experiment $experiment \
+      --lr $lr \
+      --batch_size $batch_size \
+      --n_epochs $n_epochs \
+      --warmup_ratio $warmup_ratio \
+      --seed $seed \
+      --log_path "log/${dataset}_${experiment}.log" \
+      --output_path "output/${dataset}_${experiment}.csv"
+  done
+done
