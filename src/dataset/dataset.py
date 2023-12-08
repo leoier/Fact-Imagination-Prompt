@@ -134,9 +134,9 @@ def load_data_from_csv(file_dir: str):
 
     for _, inst in df.iterrows():
         # get tokens
-        tk_seqs.append(inst["text"])
+        tk_seqs.append(str(inst["text"]))
 
         # get true labels
-        lbs_list.append(inst["label"])
+        lbs_list.append(str(inst["label"]))
 
     return tk_seqs, lbs_list
