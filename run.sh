@@ -13,21 +13,18 @@ warmup_ratio=0.1
 seed=42
 
 
-read -p "Choose the dataset (0: all, 1: twitter, 2: covid-19, 3: stress): " dataset_choice
+read -p "Choose the dataset (0: all, 1: twitter, 2: covid-19): " dataset_choice
 read -p "Choose the experiment (0: all, 1: base, 2: simple, 3: label, 4: fact, 5: fact_human): " experiment_choice
 
 case $dataset_choice in
   0) 
-    datasets=("twitter" "covid-19" "stress")
+    datasets=("twitter" "covid-19")
     ;;
   1)
     datasets=("twitter")
     ;;
   2)
     datasets=("covid-19")
-    ;;
-  3)
-    datasets=("stress")
     ;;
   *)
     echo "Invalid dataset"
