@@ -19,8 +19,8 @@ build/
 *.pyc
 *.pyo
 
-# data files
-data
+# # data files
+# data
 
 # logs
 log
