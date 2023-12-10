@@ -51,4 +51,4 @@ Alternately, you can also run the code with
       --output_path "output/${dataset}_${experiment}.csv"
 ```
 
-The output will be saved in `output/${dataset}_${experiment}.csv` and the log will be saved in `log/${dataset}_${experiment}.log`.
+The output contains the model evaluation for each experiment and will be saved as `output/${dataset}_${experiment}.csv`. Additionally, the log file will be stored as `log/${dataset}_${experiment}.log`.
